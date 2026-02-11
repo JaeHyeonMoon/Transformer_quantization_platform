@@ -1,0 +1,1 @@
+python main.py --device=$1 --channel_wise=True --head_stem_8bit=True --test_before_calibration --eps=1e-4 --n_bits=4 --seed=2024 --n_groups=8
