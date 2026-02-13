@@ -10,7 +10,6 @@ percent = 66
 constraint = 0.8
 epsilon = 1e-4
 on = True # on => False, no MPQ
-swin_on = False
 coco = 0.1
 
 class StraightThrough(nn.Module):
@@ -145,6 +144,7 @@ class UpperBitBoundQuantizer_attn(nn.Module): # Dynamic token-wise quantization
         self.threshold = None
         self.continue_ = True
         self.window = True
+        self.swin_on = False
         
     def forward(self, x: torch.Tensor):
         if x.ndim == 2: # classifier
@@ -155,8 +155,8 @@ class UpperBitBoundQuantizer_attn(nn.Module): # Dynamic token-wise quantization
         self.batch_size = b
         if self.size_div_batch_size is None:
             self.size_div_batch_size = x.size(0) // self.batch_size
-        global swin_on
-        if swin_on:
+
+        if self.swin_on:
             batch_num = b / 32
             if batch_num == 1:
                 self.window = False
@@ -257,7 +257,7 @@ class UpperBitBoundQuantizer_attn(nn.Module): # Dynamic token-wise quantization
         x_quant = x_quant * (self.n_levels - 1)
         x_dequant = (x_quant - zero_point) * delta
 
-        if swin_on:
+        if self.swin_on:
             if batch_num > 1 and batch_num % 1 == 0:
                 x_dequant = x_dequant.squeeze().reshape(32, t, h, c).transpose(1,2) # 32, h, t, c
                 x_dequant = x_dequant.reshape(32, self.num_div ** 2, h_ori, 2**2, t_ori, c).transpose(2,3)
@@ -269,7 +269,7 @@ class UpperBitBoundQuantizer_attn(nn.Module): # Dynamic token-wise quantization
                 x_dequant = x_dequant.squeeze().reshape(b, t, h, c).transpose(1,2)
         else:    
             x_dequant = x_dequant.squeeze().reshape(b, t, h, c).transpose(1,2)
-        if swin_on:
+        if self.swin_on:
             if batch_num > 1 and batch_num % 1 == 0:
                 x_dequant = x_dequant.reshape(32 * int(batch_num), h_ori, t_ori, c)
 
@@ -646,6 +646,7 @@ class Log2Quantizer(nn.Module):
         self.threshold = None
         self.token_num = None
         self.window = True
+        self.swin_on = False
 
     def forward(self, x):
         b, h, t, c = x.size(0), x.size(1), x.size(2), x.size(3)
@@ -654,10 +655,8 @@ class Log2Quantizer(nn.Module):
 
         if self.size_div_batch_size is None:
             self.size_div_batch_size = x.size(0) // self.batch_size
-
-        global swin_on
         
-        if swin_on:
+        if self.swin_on:
             batch_num = b / 32
             if batch_num == 1:
                 self.window = False
@@ -750,7 +749,7 @@ class Log2Quantizer(nn.Module):
         x_dequant = self.delta * 2 ** (-x_quant)
         x_dequant[mask] = 0
 
-        if swin_on:
+        if self.swin_on:
             if batch_num > 1 and batch_num % 1 == 0:
                 x_dequant = x_dequant.squeeze().reshape(32, t, h, c).transpose(1,2) # 32, h, t, c
                 x_dequant = x_dequant.reshape(32, self.num_div ** 2, h_ori, 2**2, t_ori, c).transpose(2,3)
@@ -762,7 +761,7 @@ class Log2Quantizer(nn.Module):
                 x_dequant = x_dequant.squeeze().reshape(b, t, h, c).transpose(1,2)
         else:    
             x_dequant = x_dequant.squeeze().reshape(b, t, h, c).transpose(1,2)
-        if swin_on:
+        if self.swin_on:
             if batch_num > 1 and batch_num % 1 == 0:
                 x_dequant = x_dequant.reshape(32 * int(batch_num), h_ori, t_ori, c)
         return x_dequant

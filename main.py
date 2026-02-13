@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 
 from quant import *
+from quant.quantizer import UpperBitBoundQuantizer_attn, Log2Quantizer
 
 from utils.datasets import ViTImageNetLoaderGenerator
 from utils.models import get_net
@@ -37,8 +38,9 @@ def parse_args():
     parser.add_argument("--data_dir", type=str, default='/data/hdd/ILSVRC2012', help='data directory')
     parser.add_argument("--seed", type=int, default=1, help='seed to use')
     parser.add_argument("--device", type=str, default='0', help='device to use')
+    parser.add_argument("--name", type=str, default="vit_tiny", choices=["vit_tiny", "vit_small", "vit_base", "deit_tiny", "deit_small", "deit_base", "swin_tiny", "swin_small", "swin_base"])
     parser.add_argument("--n_groups", type=int, default=8, help='number of groups')
-    parser.add_argument("--n_bits", type=int, default=3, help='bit setting for weights/activations')
+    parser.add_argument("--n_bits", type=int, default=4, help='bit setting for weights/activations')
     parser.add_argument("--channel_wise", type=str2bool, default=None, help='use output_channel-wise weight quantization')
     parser.add_argument("--head_wise", type=str2bool, default=None, help='use output_channel-wise weight quantization')
     # init quant model
@@ -76,6 +78,11 @@ def run(args, calib_loader, test_loader, net):
     qnn.cuda()
     qnn.eval()
 
+    if "swin" in args.name:
+        for module in qnn.modules():
+            if isinstance(module, (UpperBitBoundQuantizer_attn, Log2Quantizer)):
+                module.swin_on = True
+
     if args.head_stem_8bit:
         qnn.set_first_last_layer_to_8bit()
 
@@ -98,30 +105,30 @@ def run(args, calib_loader, test_loader, net):
 if __name__ == "__main__":
     args = parse_args()
     seed_all(args.seed)
-    names = [
-        "vit_tiny_patch16_224",
-        "vit_small_patch16_224",
-        "vit_base_patch16_224",
+    names = {
+        "vit_tiny": "vit_tiny_patch16_224",
+        "vit_small": "vit_small_patch16_224",
+        "vit_base": "vit_base_patch16_224",
 
-        "deit_tiny_patch16_224",
-        "deit_small_patch16_224",
-        "deit_base_patch16_224",
+        "deit_tiny": "deit_tiny_patch16_224",
+        "deit_small": "deit_small_patch16_224",
+        "deit_base": "deit_base_patch16_224",
 
-        # "swin_tiny_patch4_window7_224",
-        # "swin_small_patch4_window7_224",
-        # "swin_base_patch4_window7_224",
-    ]
+        "swin_tiny": "swin_tiny_patch4_window7_224",
+        "swin_small": "swin_small_patch4_window7_224",
+        "swin_base": "swin_base_patch4_window7_224",
+    }
 
     os.environ["CUDA_VISIBLE_DEVICES"]= args.device
 
-    for name in names:
-        # load model
-        net = get_net(name)
-        for param in net.parameters():
-            param.requires_grad = False
-        # build data loader
-        g = ViTImageNetLoaderGenerator(args.data_dir, 'imagenet', 32, 32, 4, kwargs={"model":net})
-        test_loader = g.test_loader()
-        calib_loader = g.calib_loader(num=args.calib_size, seed=args.seed)
-        # main process
-        run(args, calib_loader, test_loader, net)
+    name = names[args.name]
+    # load model
+    net = get_net(name)
+    for param in net.parameters():
+        param.requires_grad = False
+    # build data loader
+    g = ViTImageNetLoaderGenerator(args.data_dir, 'imagenet', 32, 32, 4, kwargs={"model":net})
+    test_loader = g.test_loader()
+    calib_loader = g.calib_loader(num=args.calib_size, seed=args.seed)
+    # main process
+    run(args, calib_loader, test_loader, net)
