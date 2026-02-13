@@ -18,9 +18,13 @@ This is the open-source transformer quantization platform for the project, title
 
 ### Model Pool
 - ## Supporting Transformer Model types
-- ViT: Tiny/Small/Base
-- DeiT: Tiny/Small/Base
-- Swin: Tiny/Small/Base
+- ### ViT: Tiny/Small/Base
+- Set args "--name={vit_tiny, vit_small, vit_base}"
+- ### DeiT: Tiny/Small/Base
+- Set args "--name={deit_tiny, deit_small, deit_base}"
+- ### Swin: Tiny/Small/Base
+- Set args "--name={swin_tiny, swin_small, swin_base}"
+
 ---
 ### Code
 - 4-bit quantization & inference\
