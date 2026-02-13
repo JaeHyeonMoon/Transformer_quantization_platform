@@ -17,6 +17,10 @@ This is the open-source transformer quantization platform for the project, title
 - ImageNet (ILSVRC-2012) available at http://www.image-net.org
 
 ### Code
+- Supporting Transformer Model types
+- ViT: Tiny/Small/Base
+- DeiT: Tiny/Small/Base
+- Swin: Tiny/Small/Base
 
 - 4-bit inference\
 `python main.py --channel_wise=True --head_stem_8bit=True --name=(model name) --test_before_calibration --eps=1e-4 --n_bits=4 --n_groups=8`
